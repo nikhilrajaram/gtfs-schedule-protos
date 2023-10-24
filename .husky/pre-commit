@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+mkdir -p ./gen/cpp \
+         ./gen/csharp \
+         ./gen/java \
+         ./gen/js \
+         ./gen/kotlin \
+         ./gen/objc \
+         ./gen/php \
+         ./gen/pyi \
+         ./gen/python \
+         ./gen/ruby
+
+protoc \
+  --cpp_out=./gen/cpp \
+  --csharp_out=./gen/csharp \
+  --java_out=./gen/java \
+  --js_out=./gen/js \
+  --kotlin_out=./gen/kotlin \
+  --objc_out=./gen/objc \
+  --php_out=./gen/php \
+  --pyi_out=./gen/pyi \
+  --python_out=./gen/python \
+  --ruby_out=./gen/ruby \
+  ./protos/v1/gtfs-schedule.proto
+
+# Check if protoc succeeded
+if [ $? -ne 0 ]; then
+  echo "protoc failed, aborting commit"
+  exit 1
+fi
+
+git add ./gen/

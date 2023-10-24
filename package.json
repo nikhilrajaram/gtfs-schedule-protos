@@ -1,0 +1,18 @@
+{
+  "name": "gtfs-schedule-protos",
+  "version": "1.0.0",
+  "description": "Proto definitions for GTFS schedule datasets https://gtfs.org/schedule/",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Nikhil Rajaram",
+    "email": "nikhilrajaram2@gmail.com",
+    "url": "https://github.com/nikhilrajaram/"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
+}

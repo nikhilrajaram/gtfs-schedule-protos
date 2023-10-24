@@ -1,0 +1,577 @@
+syntax = "proto3";
+
+package transit_scheduled;
+
+// Indicates that the rider can board the transit vehicle at any point along the
+// vehicle’s travel path as described by shapes.txt.
+// Valid options are:
+//   0 - Continuous stopping pickup.
+//   1 or empty - No continuous stopping pickup.
+//   2 - Must phone agency to arrange continuous stopping pickup.
+//   3 - Must coordinate with driver to arrange continuous stopping pickup.
+enum ContinuousPickup {
+  CONTINUOUS_PICKUP_STOPPING = 0;
+  CONTINUOUS_PICKUP_NO_CONTINUOUS_STOPPING = 1;
+  CONTINUOUS_PICKUP_MUST_PHONE_AGENCY = 2;
+  CONTINUOUS_PICKUP_MUST_COORDINATE_WITH_DRIVER = 3;
+}
+
+// Indicates that the rider can alight from the transit vehicle at any point
+// along the vehicle’s travel path as described by shapes.txt, on every trip
+// of the route.
+enum ContinuousDropOff {
+  CONTINUOUS_DROP_OFF_CONTINUOUS_STOPPING = 0;
+  CONTINUOUS_DROP_OFF_NO_CONTINUOUS_STOPPING = 1;
+  CONTINUOUS_DROP_OFF_MUST_PHONE_AGENCY = 2;
+  CONTINUOUS_DROP_OFF_MUST_COORDINATE_WITH_DRIVER = 3;
+}
+
+// Transit agencies with service represented in this dataset.
+message Agency {
+  // Identifies a transit brand which is often synonymous with a transit agency.
+  // Note that in some cases, such as when a single agency operates multiple
+  // separate services, agencies and brands are distinct. This document uses the
+  // term "agency" in place of "brand". A dataset may contain data from multiple
+  // agencies.
+  // Conditionally Required:
+  // - Required when the dataset contains data for multiple transit agencies.
+  // - Recommended otherwise.
+  string agency_id = 1;
+
+  // Full name of the transit agency.
+  // Required
+  string agency_name = 2;
+
+  // URL of the transit agency.
+  // Required
+  string agency_url = 3;
+
+  // Timezone where the transit agency is located. If multiple agencies are
+  // specified in the dataset, each must have the same agency_timezone.
+  // Required
+  string agency_timezone = 4;
+
+  // Primary language used by this transit agency. Should be provided to help
+  // GTFS consumers choose capitalization rules and other language-specific
+  // settings for the dataset.
+  string agency_lang = 5;
+
+  // A voice telephone number for the specified agency. This field is a string
+  // value that presents the telephone number as typical for the agency's
+  // service area. It may contain punctuation marks to group the digits of the
+  // number. Dialable text (for example, TriMet's "503-238-RIDE") is permitted,
+  // but the field must not contain any other descriptive text.
+  string agency_phone = 6;
+
+  // URL of a web page that allows a rider to purchase tickets or other fare
+  // instruments for that agency online.
+  string agency_fare_url = 7;
+
+  // Email address actively monitored by the agency’s customer service
+  // department. This email address should be a direct contact point where
+  // transit riders can reach a customer service representative at the agency.
+  string agency_email = 8;
+}
+
+// Stops where vehicles pick up or drop off riders. Also defines stations and
+// station entrances.
+message Stop {
+  // Identifies a location: stop/platform, station, entrance/exit, generic node
+  // or boarding area (see location_type).
+  // Multiple routes may use the same stop_id.
+  // Required
+  string stop_id = 1;
+
+  // Short text or a number that identifies the location for riders. These codes
+  // are often used in phone-based transit information systems or printed on
+  // signage to make it easier for riders to get information for a particular
+  // location. The stop_code may be the same as stop_id if it is public facing.
+  // This field should be left empty for locations without a code presented to
+  // riders.
+  string stop_code = 2;
+
+  // Name of the location. The stop_name should match the agency's rider-facing
+  // name for the location as printed on a timetable, published online, or
+  // represented on signage. For translations into other languages, use
+  // translations.txt.
+  // When the location is a boarding area (location_type=4), the stop_name
+  // should contains the name of the boarding area as displayed by the agency.
+  // It could be just one letter (like on some European intercity railway
+  // stations), or text like “Wheelchair boarding area” (NYC’s Subway) or “Head
+  // of short trains” (Paris’ RER).
+  // Conditionally Required:
+  // - Required for locations which are stops (location_type=0), stations
+  // (location_type=1) or entrances/exits (location_type=2).
+  // - Optional for locations which are generic nodes (location_type=3) or
+  // boarding areas (location_type=4).
+  string stop_name = 3;
+
+  // Readable version of the stop_name. See "Text-to-speech field" in the Term
+  // Definitions for more https://gtfs.org/schedule/reference/#term-definitions.
+  string tts_stop_name = 4;
+
+  // Description of the location that provides useful, quality information.
+  // Should not be a duplicate of stop_name.
+  string stop_desc = 5;
+
+  // Latitude of the location.
+  // For stops/platforms (location_type=0) and boarding area (location_type=4),
+  // the coordinates must be the ones of the bus pole — if exists — and
+  // otherwise of where the travelers are boarding the vehicle (on the sidewalk
+  // or the platform, and not on the roadway or the track where the vehicle
+  // stops).
+  // Conditionally Required:
+  // - Required for locations which are stops (location_type=0), stations
+  // (location_type=1) or entrances/exits (location_type=2).
+  // - Optional for locations which are generic nodes (location_type=3) or
+  // boarding areas (location_type=4).
+  double stop_lat = 6;
+
+  // Longitude of the location.
+  // For stops/platforms (location_type=0) and boarding area (location_type=4),
+  // the coordinates must be the ones of the bus pole — if exists — and
+  // otherwise of where the travelers are boarding the vehicle (on the sidewalk
+  // or the platform, and not on the roadway or the track where the vehicle
+  // stops).
+  // Conditionally Required:
+  // - Required for locations which are stops (location_type=0), stations
+  // (location_type=1) or entrances/exits (location_type=2).
+  // - Optional for locations which are generic nodes (location_type=3) or
+  // boarding areas (location_type=4).
+  double stop_lon = 7;
+
+  // Identifies the fare zone for a stop. If this record represents a station or
+  // station entrance, the zone_id is ignored.
+  // Conditionally Required:
+  // - Required if providing fare information using fare_rules.txt
+  // - Optional otherwise.
+  string zone_id = 8;
+
+  // URL of a web page about the location. This should be different from the
+  // agency.agency_url and the routes.route_url field values.
+  string stop_url = 9;
+
+  // Location type. Valid options are:
+  //   0 (or blank) - Stop (or Platform). A location where passengers board or
+  //   disembark from a transit vehicle. Is called a platform when defined
+  //   within a parent_station.
+  //   1 - Station. A physical structure or area that contains one or more
+  //   platform.
+  //   2 - Entrance/Exit. A location where passengers can enter or exit a
+  //   station from the street. If an entrance/exit belongs to multiple
+  //   stations, it may be linked by pathways to both, but the data provider
+  //   must pick one of them as parent.
+  //   3 - Generic Node. A location within a station, not matching any other
+  //   location_type, that may be used to link together pathways define in
+  //   pathways.txt.
+  //   4 - Boarding Area. A specific location on a platform, where passengers
+  //   can board and/or alight vehicles.
+  enum LocationType {
+    LOCATION_TYPE_STOP = 0;
+    LOCATION_TYPE_STATION = 1;
+    LOCATION_TYPE_ENTRANCE_EXIT = 2;
+    LOCATION_TYPE_GENERIC_NODE = 3;
+    LOCATION_TYPE_BOARDING_AREA = 4;
+  }
+
+  // Location type.
+  LocationType location_type = 10;
+
+  // Defines hierarchy between the different locations defined in stops.txt. It
+  // contains the ID of the parent location, as followed:
+  // - Stop/platform (location_type=0): the parent_station field contains the ID
+  // of a station.
+  // - Station (location_type=1): this field must be empty.
+  // - Entrance/exit (location_type=2) or generic node (location_type=3): the
+  // parent_station field contains the ID of a station (location_type=1)
+  // - Boarding Area (location_type=4): the parent_station field contains ID of
+  // a platform.
+  // Conditionally Required:
+  // - Required for locations which are entrances (location_type=2), generic
+  // nodes (location_type=3) or boarding areas (location_type=4).
+  // - Optional for stops/platforms (location_type=0).
+  // - Forbidden for stations (location_type=1).
+  string parent_station = 11;
+
+  // Timezone of the location. If the location has a parent station, it inherits
+  // the parent station’s timezone instead of applying its own. Stations and
+  // parentless stops with empty stop_timezone inherit the timezone specified by
+  // agency.agency_timezone. If stop_timezone values are provided, the times in
+  // stop_times.txt should be entered as the time since midnight in the timezone
+  // specified by agency.agency_timezone. This ensures that the time values in a
+  // trip always increase over the course of a trip, regardless of which
+  // timezones the trip crosses.
+  string stop_timezone = 12;
+
+  // Indicates whether wheelchair boardings are possible from the location.
+  // Valid options are:
+  //   For parentless stops:
+  //     0 or empty - No accessibility information for the stop.
+  //     1 - Some vehicles at this stop can be boarded by a rider in a
+  //     wheelchair.
+  //     2 - Wheelchair boarding is not possible at this stop.
+  //   For child stops:
+  //     0 or empty - Stop will inherit its wheelchair_boarding behavior from
+  //     the parent station, if specified in the parent.
+  //     1 - There exists some accessible path from outside the station to the
+  //     specific stop/platform.
+  //     2 - There exists no accessible path from outside the station to the
+  //     specific stop/platform.
+  //   For station entrances/exits:
+  //     0 or empty - Station entrance will inherit its wheelchair_boarding
+  //     behavior from the parent station, if specified for the parent.
+  //     1 - Station entrance is wheelchair accessible.
+  //     2 - No accessible path from station entrance to stops/platforms.
+  enum WheelchairBoarding {
+    WHEELCHAIR_BOARDING_NO_INFO = 0;
+    WHEELCHAIR_BOARDING_POSSIBLE = 1;
+    WHEELCHAIR_BOARDING_NOT_POSSIBLE = 2;
+  }
+
+  // Indicates whether wheelchair boardings are possible from the location.
+  WheelchairBoarding wheelchair_boarding = 13;
+
+  // Level of the location. The same level may be used by multiple unlinked
+  // stations.
+  string level_id = 14;
+
+  // Platform identifier for a platform stop (a stop belonging to a station).
+  // This should be just the platform identifier (eg. "G" or "3"). Words like
+  // “platform” or "track" (or the feed’s language-specific equivalent) should
+  // not be included. This allows feed consumers to more easily internationalize
+  // and localize the platform identifier into other languages.
+  string platform_code = 15;
+}
+
+// Transit routes. A route is a group of trips that are displayed to riders as a
+// single service.
+message Route {
+  // Identifies a route.
+  // Required
+  string route_id = 1;
+
+  // Agency for the specified route.
+  // Conditionally Required:
+  // - Required if multiple agencies are defined in agency.txt.
+  // - Recommended otherwise.
+  string agency_id = 2;
+
+  // Short name of a route. Often a short, abstract identifier (e.g., "32",
+  // "100X", "Green") that riders use to identify a route. Both route_short_name
+  // and route_long_name may be defined.
+  // Conditionally Required:
+  // - Required if routes.route_long_name is empty.
+  // - Recommended if there is a brief service designation. This should be the
+  // commonly-known passenger name of the service, and should be no longer than
+  // 12 characters.
+  string route_short_name = 3;
+
+  // Full name of a route. This name is generally more descriptive than the
+  // route_short_name and often includes the route's destination or stop. Both
+  // route_short_name and route_long_name may be defined.
+  // Conditionally Required:
+  // - Required if routes.route_short_name is empty.
+  // - Optional otherwise.
+  string route_long_name = 4;
+
+  // Description of a route that provides useful, quality information. Should
+  // not be a duplicate of route_short_name or route_long_name.
+  string route_desc = 5;
+
+  // Indicates the type of transportation used on a route. Valid options are:
+  //   0 - Tram, Streetcar, Light rail. Any light rail or street level system
+  //   within a metropolitan area.
+  //   1 - Subway, Metro. Any underground rail system within a metropolitan
+  //   area.
+  //   2 - Rail. Used for intercity or long-distance travel.
+  //   3 - Bus. Used for short- and long-distance bus routes.
+  //   4 - Ferry. Used for short- and long-distance boat service.
+  //   5 - Cable tram. Used for street-level rail cars where the cable runs
+  //   beneath the vehicle (e.g., cable car in San Francisco).
+  //   6 - Aerial lift, suspended cable car (e.g., gondola lift, aerial
+  //   tramway). Cable transport where cabins, cars, gondolas or open chairs are
+  //   suspended by means of one or more cables.
+  //   7 - Funicular. Any rail system designed for steep inclines.
+  //   11 - Trolleybus. Electric buses that draw power from overhead wires using
+  //   poles.
+  //   12 - Monorail. Railway in which the track consists of a single rail or a
+  //   beam.
+  enum RouteType {
+    ROUTE_TYPE_TRAM_STREETCAR_LIGHTRAIL = 0;
+    ROUTE_TYPE_SUBWAY_METRO = 1;
+    ROUTE_TYPE_RAIL = 2;
+    ROUTE_TYPE_BUS = 3;
+    ROUTE_TYPE_FERRY = 4;
+    ROUTE_TYPE_CABLE_TRAM = 5;
+    ROUTE_TYPE_AERIAL_LIFT_SUSPENDED_CABLE_CAR = 6;
+    ROUTE_TYPE_FUNICULAR = 7;
+    ROUTE_TYPE_TROLLEYBUS = 11;
+    ROUTE_TYPE_MONORAIL = 12;
+  }
+
+  // Indicates the type of transportation used on a route.
+  // Required
+  RouteType route_type = 6;
+
+  // URL of a web page about the particular route. Should be different from the
+  // agency.agency_url value.
+  string route_url = 7;
+
+  // Route color designation that matches public facing material. Defaults to
+  // white (FFFFFF) when omitted or left empty. The color difference between
+  // route_color and route_text_color should provide sufficient contrast when
+  // viewed on a black and white screen.
+  string route_color = 8;
+
+  // Legible color to use for text drawn against a background of route_color.
+  // Defaults to black (000000) when omitted or left empty. The color difference
+  // between route_color and route_text_color should provide sufficient contrast
+  // when viewed on a black and white screen.
+  string route_text_color = 9;
+
+  // Orders the routes in a way which is ideal for presentation to customers.
+  // Routes with smaller route_sort_order values should be displayed first.
+  uint32 route_sort_order = 10;
+
+  // Indicates that the rider can board the transit vehicle at any point along
+  // the vehicle’s travel path as described by shapes.txt, on every trip of the
+  // route.
+  ContinuousPickup continuous_pickup = 11;
+
+  // Indicates that the rider can alight from the transit vehicle at any point
+  // along the vehicle’s travel path as described by shapes.txt, on every trip
+  // of the route.
+  ContinuousDropOff continuous_drop_off = 12;
+
+  // Identifies a group of routes. Multiple rows in routes.txt may have the same
+  // network_id.
+  string network_id = 13;
+}
+
+// Trips for each route. A trip is a sequence of two or more stops that occur
+// during a specific time period.
+message Trip {
+  // Identifies a route.
+  // Required
+  string route_id = 1;
+
+  // Identifies a set of dates when service is available for one or more routes.
+  // Required
+  string service_id = 2;
+
+  // Identifies a trip.
+  // Required
+  string trip_id = 3;
+
+  // Text that appears on signage identifying the trip's destination to riders.
+  // Should be used to distinguish between different patterns of service on the
+  // same route.
+  // If the headsign changes during a trip, values for trip_headsign may be
+  // overridden by defining values in stop_times.stop_headsign for specific
+  // stop_times along the trip.
+  string trip_headsign = 4;
+
+  // Public facing text used to identify the trip to riders, for instance, to
+  // identify train numbers for commuter rail trips. If riders do not commonly
+  // rely on trip names, trip_short_name should be empty. A trip_short_name
+  // value, if provided, should uniquely identify a trip within a service day;
+  // it should not be used for destination names or limited/express
+  // designations.
+  string trip_short_name = 5;
+
+  // Indicates the direction of travel for a trip. This field should not be used
+  // in routing; it provides a way to separate trips by direction when
+  // publishing time tables. Valid options are:
+  //   0 - Travel in one direction (e.g. outbound travel).
+  //   1 - Travel in the opposite direction (e.g. inbound travel).
+  enum Direction {
+    DIRECTION_ONE_DIRECTION = 0;
+    DIRECTION_OPPOSITE = 1;
+  }
+
+  // Indicates the direction of travel for a trip.
+  // This field should not be used in routing; it provides a way to separate
+  // trips by direction when publishing time tables.
+  Direction direction_id = 6;
+
+  // Identifies the block to which the trip belongs. A block consists of a
+  // single trip or many sequential trips made using the same vehicle, defined
+  // by shared service days and block_id. A block_id may have trips with
+  // different service days, making distinct blocks. See the example below. To
+  // provide in-seat transfers information, transfers of transfer_type 4 should
+  // be provided instead.
+  string block_id = 7;
+
+  // Identifies a geospatial shape describing the vehicle travel path for a
+  // trip.
+  // Conditionally Required:
+  // - Required if the trip has a continuous pickup or drop-off behavior defined
+  // either in routes.txt or in stop_times.txt.
+  // - Optional otherwise.
+  string shape_id = 8;
+
+  // Indicates wheelchair accessibility. Valid options are:
+  //   0 or empty - No accessibility information for the trip.
+  //   1 - Vehicle being used on this particular trip can accommodate at least
+  //   one rider in a wheelchair.
+  //   2 - No riders in wheelchairs can be accommodated on this trip.
+  enum WheelchairAccessibility {
+    WHEELCHAIR_ACCESSIBILITY_NO_INFO = 0;
+    WHEELCHAIR_ACCESSIBILITY_ACCESSIBLE = 1;
+    WHEELCHAIR_ACCESSIBILITY_NOT_ACCESSIBLE = 2;
+  }
+
+  // Indicates wheelchair accessibility.
+  WheelchairAccessibility wheelchair_accessible = 9;
+
+  // Indicates whether bikes are allowed. Valid options are:
+  //   0 or empty - No bike information for the trip.
+  //   1 - Vehicle being used on this particular trip can accommodate at least
+  //   one bicycle.
+  //   2 - No bicycles are allowed on this trip.
+  enum BikeAllowance {
+    BIKE_ALLOWANCE_NO_INFO = 0;
+    BIKE_ALLOWANCE_ALLOWED = 1;
+    BIKE_ALLOWANCE_NOT_ALLOWED = 2;
+  }
+
+  // Indicates whether bikes are allowed.
+  BikeAllowance bikes_allowed = 10;
+}
+
+// Times that a vehicle arrives at and departs from stops for each trip.
+message StopTime {
+  // Identifies a trip.
+  // Required
+  string trip_id = 1;
+
+  // Arrival time at the stop (defined by stop_times.stop_id) for a specific
+  // trip (defined by stop_times.trip_id) in the time zone specified by
+  // agency.agency_timezone, not stops.stop_timezone.
+  // If there are not separate times for arrival and departure at a stop,
+  // arrival_time and departure_time should be the same.
+  // For times occurring after midnight on the service day, enter the time as a
+  // value greater than 24:00:00 in HH:MM:SS.
+  // If exact arrival and departure times (timepoint=1 or empty) are not
+  // available, estimated or interpolated arrival and departure times
+  // (timepoint=0) should be provided.
+  // Conditionally Required:
+  // - Required for the first and last stop in a trip (defined by
+  // stop_times.stop_sequence).
+  // - Required for timepoint=1.
+  // - Optional otherwise.
+  string arrival_time = 2;
+
+  // Departure time from the stop (defined by stop_times.stop_id) for a specific
+  // trip (defined by stop_times.trip_id) in the time zone specified by
+  // agency.agency_timezone, not stops.stop_timezone.
+  // If there are not separate times for arrival and departure at a stop,
+  // arrival_time and departure_time should be the same.
+  // For times occurring after midnight on the service day, enter the time as a
+  // value greater than 24:00:00 in HH:MM:SS.
+  // If exact arrival and departure times (timepoint=1 or empty) are not
+  // available, estimated or interpolated arrival and departure times
+  // (timepoint=0) should be provided.
+  // Conditionally Required:
+  // - Required for timepoint=1.
+  // - Optional otherwise.
+  string departure_time = 3;
+
+  // Identifies the serviced stop. All stops serviced during a trip must have a
+  // record in stop_times.txt. Referenced locations must be stops/platforms,
+  // i.e. their stops.location_type value must be 0 or empty. A stop may be
+  // serviced multiple times in the same trip, and multiple trips and routes may
+  // service the same stop.
+  // Required
+  string stop_id = 4;
+
+  // Order of stops for a particular trip. The values must increase along the
+  // trip but do not need to be consecutive.
+  // Required
+  uint32 stop_sequence = 5;
+
+  // Text that appears on signage identifying the trip's destination to riders.
+  // This field overrides the default trips.trip_headsign when the headsign
+  // changes between stops. If the headsign is displayed for an entire trip,
+  // trips.trip_headsign should be used instead.
+  // A stop_headsign value specified for one stop_time does not apply to
+  // subsequent stop_times in the same trip. If you want to override the
+  // trip_headsign for multiple stop_times in the same trip, the stop_headsign
+  // value must be repeated in each stop_time row.
+  string stop_headsign = 6;
+
+  // Indicates pickup method. Valid options are:
+  //   0 or empty - Regularly scheduled pickup.
+  //   1 - No pickup available.
+  //   2 - Must phone agency to arrange pickup.
+  //   3 - Must coordinate with driver to arrange pickup.
+  enum PickupType {
+    PICKUP_TYPE_REGULARLY_SCHEDULED = 0;
+    PICKUP_TYPE_NONE_AVAILABLE = 1;
+    PICKUP_TYPE_MUST_PHONE_AGENCY = 2;
+    PICKUP_TYPE_MUST_COORDINATE_WITH_DRIVER = 3;
+  }
+
+  // Indicates pickup method.
+  PickupType pickup_type = 7;
+
+  // Indicates drop off method. Valid options are:
+  //   0 or empty - Regularly scheduled drop off.
+  //   1 - No drop off available.
+  //   2 - Must phone agency to arrange drop off.
+  //   3 - Must coordinate with driver to arrange drop off.
+  enum DropOffType {
+    DROP_OFF_TYPE_REGULARLY_SCHEDULED = 0;
+    DROP_OFF_TYPE_NONE_AVAILABLE = 1;
+    DROP_OFF_TYPE_MUST_PHONE_AGENCY = 2;
+    DROP_OFF_TYPE_MUST_COORDINATE_WITH_DRIVER = 3;
+  }
+
+  // Indicates drop off method.
+  DropOffType drop_off_type = 8;
+
+  // Indicates that the rider can board the transit vehicle at any point along
+  // the vehicle’s travel path as described by shapes.txt, from this stop_time
+  // to the next stop_time in the trip’s stop_sequence.
+  // If this field is populated, it overrides any continuous pickup behavior
+  // defined in routes.txt. If this field is empty, the stop_time inherits any
+  // continuous pickup behavior defined in routes.txt.
+  ContinuousPickup continuous_pickup = 9;
+
+  // Indicates that the rider can alight from the transit vehicle at any point
+  // along the vehicle’s travel path as described by shapes.txt, from this
+  // stop_time to the next stop_time in the trip’s stop_sequence.
+  // If this field is populated, it overrides any continuous drop-off behavior
+  // defined in routes.txt. If this field is empty, the stop_time inherits any
+  // continuous drop-off behavior defined in routes.txt.
+  ContinuousDropOff continuous_drop_off = 10;
+
+  // Actual distance traveled along the associated shape, from the first stop to
+  // the stop specified in this record. This field specifies how much of the
+  // shape to draw between any two stops during a trip. Must be in the same
+  // units used in shapes.txt. Values used for shape_dist_traveled must increase
+  // along with stop_sequence; they must not be used to show reverse travel
+  // along a route.
+  // Recommended for routes that have looping or inlining (the vehicle crosses
+  // or travels over the same portion of alignment in one trip). See
+  // shapes.shape_dist_traveled.
+  float shape_dist_traveled = 11;
+
+  // Indicates if arrival and departure times for a stop are strictly adhered to
+  // by the vehicle or if they are instead approximate and/or interpolated
+  // times. This field allows a GTFS producer to provide interpolated
+  // stop-times, while indicating that the times are approximate.
+  // Valid options are:
+  //   0 - Times are considered approximate.
+  //   1 or empty - Times are considered exact.
+  enum TimePoint {
+    TIME_POINT_APPROXIMATE = 0;
+    TIME_POINT_EXACT = 1;
+  }
+
+  // Indicates if arrival and departure times for a stop are strictly adhered to
+  // by the vehicle or if they are instead approximate and/or interpolated
+  // times. This field allows a GTFS producer to provide interpolated
+  // stop-times, while indicating that the times are approximate.
+  uint32 timepoint = 12;
+}
